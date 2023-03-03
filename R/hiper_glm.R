@@ -6,7 +6,7 @@ hiper_glm <- function(design, outcome, model = "linear", option = list()) {
   }
   # TODO: find MLE.
   if (model == "linear") {
-    if (is.null(option$mle_solver) == TRUE) {
+    if ((is.null(option$mle_solver) == TRUE) || (option$mle_solver == "pseudo inverse")) {
       MLE <- MLE_pseudo_inverse(design, outcome)
     } else if (option$mle_solver == "BFGS") {
       MLE <- linear_BFGS(design, outcome, noise_var = 1)

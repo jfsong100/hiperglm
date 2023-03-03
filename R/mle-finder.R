@@ -2,12 +2,12 @@ MLE_pseudo_inverse <- function(design, outcome) {
   return(solve(t(design) %*% design, t(design) %*% outcome))
 }
 
-linear_loglik <- function(coef_estimate, design, outcome, noise_var = 1) {
-  return(-sum((outcome - design %*% coef_estimate)^2) / 2 / noise_var)
+linear_loglik <- function(coef, design, outcome, noise_var = 1) {
+  return(-sum((outcome - design %*% coef)^2) / 2 / noise_var)
 }
 
-linear_gradient <- function(coef_estimate, design, outcome, noise_var = 1) {
-  gradient <- -(t(design) %*% design %*% coef_estimate - t(design) %*% outcome) / noise_var
+linear_gradient <- function(coef, design, outcome, noise_var = 1) {
+  gradient <- -(t(design) %*% design %*% coef - t(design) %*% outcome) / noise_var
   return(gradient)
 }
 
