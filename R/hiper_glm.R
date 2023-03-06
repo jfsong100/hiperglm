@@ -1,6 +1,6 @@
 #' @export
 hiper_glm <- function(design, outcome, model = "linear", option = list()) {
-  supported_model <- c("linear")
+  supported_model <- c("linear", "logit")
   if (!(model %in% supported_model)) {
     stop(sprintf("Model is not available"))
   }
@@ -10,6 +10,12 @@ hiper_glm <- function(design, outcome, model = "linear", option = list()) {
       MLE <- MLE_pseudo_inverse(design, outcome)
     } else if (option$mle_solver == "BFGS") {
       MLE <- linear_BFGS(design, outcome, noise_var = 1)
+    }
+  }else{
+    if ((is.null(option$mle_solver) == TRUE) ) {
+      MLE <- logit_newton(design, outcome)
+    } else if (option$mle_solver == "BFGS") {
+      MLE <- logit_BFGS(design, outcome)
     }
   }
 
