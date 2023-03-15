@@ -11,51 +11,38 @@ linear_gradient <- function(coef, design, outcome, noise_var = 1) {
   return(gradient)
 }
 
-linear_BFGS <- function(design, outcome, noise_var = 1) {
+MLE_BFGS_function <- function(loglik_function, gradient_function, design, outcome, ...) {
   initial <- rep(0, ncol(design))
-  MLE <- stats::optim(initial, linear_loglik, linear_gradient,
-    design = design, outcome = outcome, noise_var = 1,
-    control = list(fnscale = -1),
-    method = "BFGS"
+  BFGS_MLE <- stats::optim(initial, loglik_function, gradient_function,
+    design = design, outcome = outcome, control = list(fnscale = -1),
+    method = "BFGS",...
   )$par
-  return(MLE)
+  return(BFGS_MLE)
 }
 
 logit_loglik <- function(coef, design, outcome) {
 
   n <- length(outcome)
-  log_lik <- sum(sapply(1:n, function(i){
-    outcome[i] * sum(design[i,] * coef) -
-      log(1 + exp(sum(design[i,] * coef)))
-    }))
+  prob <- expit_function(design %*% coef)
+  log_lik <- sum(outcome * log(prob) + (1 - outcome) * log(1 - prob))
   return(log_lik)
 
 }
 
 logit_gradient <- function(coef, design, outcome) {
 
-  pi <- exp(design %*% coef) / (1 + exp(design %*% coef))
-  gradient <- as.vector(t(outcome - pi) %*% design)
+  prob <- expit_function(design %*% coef)
+  gradient <- as.vector(t(outcome - prob) %*% design)
 
   return(gradient)
 
 }
 
-logit_BFGS <- function(design, outcome) {
-  initial <- rep(0, ncol(design))
-  MLE <- stats::optim(initial, logit_loglik, logit_gradient,
-                      design = design, outcome = outcome,
-                      control = list(fnscale = -1),
-                      method = "BFGS"
-  )$par
-  return(MLE)
-}
-
 
 logit_hessian <- function(coef, design, outcome){
-  eta <- design %*% coef
-  pi <- exp(eta)/(1+exp(eta))
-  W <- diag(c(pi * (1 - pi)))
+
+  prob <-  expit_function(design %*% coef)
+  W <- diag(c(prob * (1 - prob)))
   hessian <- t(design) %*% W %*% design
   return(hessian)
 }
@@ -63,34 +50,43 @@ logit_hessian <- function(coef, design, outcome){
 logit_newton <- function(design, outcome){
 
   max_iteration <- 1000
-  t <- 0
+  iter <- 0
 
-  threshold <- ncol(design)/max_iteration
-  diff <- 1
+  stop_indicator <- FALSE
 
   coef_old <- rep(0, ncol(design))
 
   loglik_old <- logit_loglik(coef_old, design, outcome)
 
-  while(diff >= threshold & t <= max_iteration ){
+  while(!stop_indicator & iter <= max_iteration ){
 
-  eta_old <- design %*% coef_old
-  pi_old <- exp(eta_old)/(1+exp(eta_old))
+  prob_old <-  expit_function(design %*% coef_old)
   hessian_old <- logit_hessian(coef_old, design, outcome)
 
-  coef_update <-  coef_old + solve(hessian_old, t(design) %*% (outcome-pi_old))
+  coef_update <-  coef_old + solve(hessian_old, t(design) %*% (outcome-prob_old))
   loglik_update <- logit_loglik(coef_update, design, outcome)
-  diff <- abs(loglik_update - loglik_old)
+  stop_indicator <- are_all_close(loglik_update, loglik_old)
 
   loglik_old <- loglik_update
   coef_old <- coef_update
-  t <- t+1
+  iter <- iter+1
 
   }
-
+  if(iter == max_iteration){
+    warning("The max iterations are reached!")
+  }
   return(as.vector(coef_update))
 
 }
 
 
+expit_function <- function(x){
+  return(exp(x)/(1+exp(x)))
+}
 
+are_all_close <- function(v, w, abs_tol = 1e-6, rel_tol = 1e-6) {
+  abs_diff <- abs(v - w)
+  are_all_within_atol <- all(abs_diff < abs_tol)
+  are_all_within_rtol <- all(abs_diff < rel_tol * pmax(abs(v), abs(w)))
+  return(are_all_within_atol && are_all_within_rtol)
+}
