@@ -13,7 +13,7 @@ hiper_glm <- function(design, outcome, model = "linear", option = list()) {
     }
   }else{
     if ((is.null(option$mle_solver)) ) {
-      MLE <- logit_newton(design, outcome)
+      MLE <- logit_newton(design, outcome, option)
     } else if (option$mle_solver == "BFGS") {
       MLE <- MLE_BFGS_function(logit_loglik, logit_gradient, design, outcome)
     }

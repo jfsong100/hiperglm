@@ -1,5 +1,5 @@
 MLE_pseudo_inverse <- function(design, outcome) {
-  return(solve(t(design) %*% design, t(design) %*% outcome))
+  return(qr.solve(t(design) %*% design, t(design) %*% outcome))
 }
 
 linear_loglik <- function(coef, design, outcome, noise_var = 1) {
@@ -47,7 +47,18 @@ logit_hessian <- function(coef, design, outcome){
   return(hessian)
 }
 
-logit_newton <- function(design, outcome){
+take_one_newton_step <- function(design, outcome, coef_old, option= list()){
+  prob_old <-  expit_function(design %*% coef_old)
+  hessian_old <- logit_hessian(coef_old, design, outcome)
+  if ((is.null(option$solver)) || (option$solver == "qr")) {
+    coef_update <-  coef_old + solve_qr_cpp(hessian_old, t(design) %*% (outcome-prob_old))
+  }else if((option$solver == "lu") || (option$solver == "cholesky")) {
+    coef_update <-  coef_old + solve(hessian_old, t(design) %*% (outcome-prob_old))
+  }
+  return(coef_update)
+}
+
+logit_newton <- function(design, outcome, option){
 
   max_iteration <- 1000
   iter <- 0
@@ -60,10 +71,7 @@ logit_newton <- function(design, outcome){
 
   while(!stop_indicator & iter <= max_iteration ){
 
-  prob_old <-  expit_function(design %*% coef_old)
-  hessian_old <- logit_hessian(coef_old, design, outcome)
-
-  coef_update <-  coef_old + solve(hessian_old, t(design) %*% (outcome-prob_old))
+  coef_update <- take_one_newton_step(design, outcome, coef_old, option)
   loglik_update <- logit_loglik(coef_update, design, outcome)
   stop_indicator <- are_all_close(loglik_update, loglik_old)
 

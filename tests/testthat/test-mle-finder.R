@@ -55,3 +55,14 @@ test_that("gradient calculation by comparing it against a numerical one logit", 
     abs_tol = 1e-6, rel_tol = 1e-6
   ))
 })
+
+test_that("using QR decomposition and use LU decompisition", {
+  n_obs <- 32; n_pred <- 4
+  data <- simulate_data(n_obs, n_pred, model = "logit", seed = 1918)
+  design <- data$design; outcome <- data$outcome
+  via_newton_out_qr <- hiper_glm(design, outcome, model = "logit")
+  via_newton_out_lu <- hiper_glm(design, outcome, model = "logit", option= list(solver="lu"))
+  expect_true(are_all_close(
+    coef(via_newton_out_qr), coef(via_newton_out_lu), abs_tol = 1e-2, rel_tol = 1e-2
+  ))
+})
